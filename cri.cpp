@@ -41,21 +41,36 @@ void afiseazaSolutiaOptima(Pereche solutie[])
 	scrie << zona << ' ' << nrGraunte << ' ' << nrCamere;
 	scrie.close();
 }
-bool esteNumarPar(int x)
+bool par(int x)
 {
-	return x % 2 == 0;
+	return x%2 == 0;
 }
-bool potEvitaCamera(int nrLinie, int nrColoana, int nrZona)
+bool impar(int x)
 {
-	if (nrZona == 1 || nrZona == 2)
-		if ((esteNumarPar(nrLinie) && esteNumarPar(nrColoana))
-		    || (!esteNumarPar(nrLinie) && !esteNumarPar(nrColoana)))
-			return 1;
-	if (nrZona == 0 || nrZona == 3)
-		if ((!esteNumarPar(nrLinie) && esteNumarPar(nrColoana))
-		    || (esteNumarPar(nrLinie) && !esteNumarPar(nrColoana)))
-			return 1;
+	return x%2 != 0;
+}
+bool cameraEvitabilaZona23(int linie, int coloana)
+{
+	if (par(linie) && par(coloana))
+		return 1;
+	if (impar(linie) && impar(coloana))
+		return 1;
 	return 0;
+}
+bool cameraEvitabilaZona14(int linie, int coloana)
+{
+	if (impar(linie) && par(coloana))
+		return 1;
+	if (par(linie) && impar(coloana))
+		return 1;
+	return 0;
+}
+bool potEvitaCamera(int linie, int coloana, int nrZona)
+{
+
+	if (nrZona == 1 || nrZona == 2)
+		return cameraEvitabilaZona23(linie, coloana);
+	return cameraEvitabilaZona14(linie, coloana);
 }
 void calculeazaSolutieInZona(int nrZona, Pereche & solutie)
 {
@@ -68,13 +83,13 @@ void calculeazaSolutieInZona(int nrZona, Pereche & solutie)
 	int minim = MAX_NR;
 	int nrGraunte = 0;
 	int nrCamere = nrLinii * nrColoane;
-	bool cazSpecial = esteNumarPar(nrLinii) && esteNumarPar(nrColoane);
-	for (int i = primaLinie; i <= ultimaLinie; i++)
-		for (int j = primaColoana; j <= ultimaColoana; j++)
+	bool cazSpecial = par(nrLinii) && par(nrColoane);
+	for (int linie = 1, i = primaLinie; i <= ultimaLinie; linie++, i++)
+		for (int coloana = 1, j = primaColoana; j <= ultimaColoana; coloana++, j++)
 		{
 			nrGraunte += C[i][j];
 			if (cazSpecial
-			    && potEvitaCamera(i, j, nrZona)
+			    && potEvitaCamera(linie, coloana, nrZona)
 			    && C[i][j] < minim)
 				minim = C[i][j];
 		}
