@@ -1,140 +1,117 @@
 #include <fstream>
 #define MAX_N 500
 #define MAX_M 500
+#define MAX_NR 8000
 #define NR_ZONE 4
-#define NR_DIRECTII 4
 using namespace std;
-struct Coordonate { int x, y; };
-struct Zona { Coordonate destinatie, limitaLinie, limitaColoana; };
-struct Solutie { int Z, T, K; };
-int directieOx[] = {-1, 0, 1, 0};
-int directieOy[] = {0, 1, 0, -1};
-int N, M, X, Y, C[MAX_N][MAX_M];
+ofstream scrie("cri.out");
+struct Pereche { int x, y; };
+struct Zona { Pereche coltStangaSus, coltDreaptaJos; };
+Zona Z[NR_ZONE];
+int N, M, X, Y, C[MAX_N+1][MAX_M+1];
 void citesteDateleDeIntrare();
-void initializeazaVectorDeZone(Zona*);
-void initializeazaVectorDeSolutii(Solutie*);
-void calculeazaSolutie(int, Coordonate, Zona, Solutie &);
-void calculeazaRezultat(Solutie*, Solutie &);
+void initializeazaVectorulDeZone();
+void calculeazaSolutieInZona(int, Pereche &);
+void afiseazaSolutiaOptima(Pereche*);
 int main()
 {
-    Zona z[NR_ZONE];
-    Solutie s[NR_ZONE], sol;
 	citesteDateleDeIntrare();
-	initializeazaVectorDeZone(z);
-	initializeazaVectorDeSolutii(s);
+	initializeazaVectorulDeZone();
+	Pereche solutie[NR_ZONE];
 	for (int i = 0; i < NR_ZONE; i++)
-        calculeazaSolutie(1, {X, Y}, z[i], s[i]);
-	calculeazaRezultat(s, sol);
-	ofstream scrie("cri.out");
-	scrie << sol.Z << ' ' << sol.T << ' ' << sol.K;
-	scrie.close();
+		calculeazaSolutieInZona(i, solutie[i]);
+	afiseazaSolutiaOptima(solutie);
 	return 0;
 }
-void calculeazaRezultat(Solutie s[], Solutie & sol)
+void afiseazaSolutiaOptima(Pereche solutie[])
 {
-    sol.T = 0;
-    sol.K = N*M;
-	for (int i = 0; i < NR_ZONE; i++)
-    {
-        if (s[i].T > sol.T)
-            sol = s[i];
-        else if (s[i].T == sol.T && s[i].K < sol.K)
-            sol = s[i];
-    }
+	int zona = 1;
+	int nrGraunte = solutie[0].x;
+	int nrCamere = solutie[0].y;
+	for (int i = 1; i < NR_ZONE; i++)
+		if (solutie[i].x > nrGraunte
+		    || (solutie[i].x == nrGraunte
+		        && solutie[i].y < nrCamere))
+		{
+			zona = i+1;
+			nrGraunte = solutie[i].x;
+			nrCamere = solutie[i].y;
+		}
+	ofstream scrie("cri.out");
+	scrie << zona << ' ' << nrGraunte << ' ' << nrCamere;
+	scrie.close();
 }
-bool esteCameraInZona(Coordonate c, Zona z)
+bool esteNumarPar(int x)
 {
-    return c.x >= z.limitaLinie.x && c.x <= z.limitaLinie.y
-        && c.y >= z.limitaColoana.x && c.y <= z.limitaColoana.y;
+	return x % 2 == 0;
 }
-bool esteCameraNevizitata(Coordonate c)
+bool potEvitaCamera(int nrLinie, int nrColoana, int nrZona)
 {
-    return C[c.x][c.y] >= 0;
+	if (nrZona == 1 || nrZona == 2)
+		if ((esteNumarPar(nrLinie) && esteNumarPar(nrColoana))
+		    || (!esteNumarPar(nrLinie) && !esteNumarPar(nrColoana)))
+			return 1;
+	if (nrZona == 0 || nrZona == 3)
+		if ((!esteNumarPar(nrLinie) && esteNumarPar(nrColoana))
+		    || (esteNumarPar(nrLinie) && !esteNumarPar(nrColoana)))
+			return 1;
+	return 0;
 }
-bool potVizitaCamera(Coordonate c, Zona z)
+void calculeazaSolutieInZona(int nrZona, Pereche & solutie)
 {
-    if (!esteCameraInZona(c, z))
-        return 0;
-    return esteCameraNevizitata(c);
+	int primaLinie = Z[nrZona].coltStangaSus.x;
+	int ultimaLinie= Z[nrZona].coltDreaptaJos.x;
+	int primaColoana = Z[nrZona].coltStangaSus.y;
+	int ultimaColoana = Z[nrZona].coltDreaptaJos.y;
+	int nrLinii = ultimaLinie-primaLinie+1;
+	int nrColoane = ultimaColoana-primaColoana+1;
+	int minim = MAX_NR;
+	int nrGraunte = 0;
+	int nrCamere = nrLinii * nrColoane;
+	bool cazSpecial = esteNumarPar(nrLinii) && esteNumarPar(nrColoane);
+	for (int i = primaLinie; i <= ultimaLinie; i++)
+		for (int j = primaColoana; j <= ultimaColoana; j++)
+		{
+			nrGraunte += C[i][j];
+			if (cazSpecial
+			    && potEvitaCamera(i, j, nrZona)
+			    && C[i][j] < minim)
+				minim = C[i][j];
+		}
+	if (cazSpecial)
+	{
+		nrGraunte -= minim;
+		nrCamere--;
+	}
+	solutie.x = nrGraunte;
+	solutie.y = nrCamere;
 }
-bool suntCoordonateleEgale(Coordonate a, Coordonate b)
+void initializeazaVectorulDeZone()
 {
-    return a.x == b.x && a.y == b.y;
-}
-void calculeazaSolutie(int pas, Coordonate c, Zona z, Solutie & s)
-{
-    if (suntCoordonateleEgale(c, z.destinatie))
-    {
-        if (C[c.x][c.y] > s.T)
-        {
-            s.T = C[c.x][c.y];
-            s.K = pas;
-        }
-        else if (C[c.x][c.y] == s.T)
-            if (pas < s.K)
-                s.K = pas;
-    }
-    else
-        for (int i = 0; i < NR_DIRECTII; i++)
-        {
-            Coordonate vecin;
-            vecin.x = c.x + directieOx[i];
-            vecin.y = c.y + directieOy[i];
-            if (potVizitaCamera(vecin, z))
-            {
-                int graunteC = C[c.x][c.y];
-                int graunteV = C[vecin.x][vecin.y];
-                C[vecin.x][vecin.y] += graunteC;
-                C[c.x][c.y] = -1;
-                calculeazaSolutie(pas+1, vecin, z, s);
-                C[c.x][c.y] = graunteC;
-                C[vecin.x][vecin.y] = graunteV;
-            }
-        }
-}
-void initializeazaVectorDeSolutii(Solutie s[])
-{
-    for (int i = 0; i < NR_ZONE; i++)
-    {
-        s[i].Z = i+1;
-        s[i].T = 0;
-        s[i].K = N*M;
-    }
-}
-void initializeazaVectorDeZone(Zona z[])
-{
-	Coordonate destinatie[] = {
-		{0, 0},
-		{0, M-1},
-		{N-1, 0},
-		{N-1, M-1}
+	Pereche coltStangaSusZona[] = {
+		{1, 1},
+		{1, Y},
+		{X, 1},
+		{X, Y}
 	};
-	Coordonate limitaLinie[] = {
-		{0, X},
-		{0, X},
-		{X, N-1},
-		{X, N-1}
-	};
-	Coordonate limitaColoana[] = {
-		{0, Y},
-		{Y, M-1},
-		{0, Y},
-		{Y, M-1}
+	Pereche coltDreaptaJosZona[] = {
+		{X, Y},
+		{X, M},
+		{N, Y},
+		{N, M}
 	};
 	for (int i = 0; i < NR_ZONE; i++)
 	{
-		z[i].destinatie = destinatie[i];
-		z[i].limitaLinie = limitaLinie[i];
-		z[i].limitaColoana = limitaColoana[i];
+		Z[i].coltStangaSus = coltStangaSusZona[i];
+		Z[i].coltDreaptaJos = coltDreaptaJosZona[i];
 	}
 }
 void citesteDateleDeIntrare()
 {
 	ifstream citeste("cri.in");
 	citeste >> N >> M >> X >> Y;
-	for (int i = 0; i < N; i++)
-		for (int j = 0; j < M; j++)
+	for (int i = 1; i <= N; i++)
+		for (int j = 1; j <= M; j++)
 			citeste >> C[i][j];
-    X--, Y--; // deoarece indicii pornesc de la 0
 	citeste.close();
 }
